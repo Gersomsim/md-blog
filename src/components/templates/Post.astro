@@ -1,14 +1,145 @@
 ---
-import Layout from '../../layouts/Layout.astro';
+import Layout from "../../layouts/Layout.astro";
+import Aside from "../organism/Aside.astro";
+import { getCollection } from 'astro:content';
+import Avatar from "../molecules/Avatar.astro";
+
 const { content } = Astro.props;
+
+// Obtener los últimos 5 posts para el aside
+const allPosts = await getCollection('blog');
+const recentPosts = allPosts
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
+  .slice(0, 5)
+  .filter(post => post.slug !== content.slug); // Excluir el post actual
 ---
 
 <Layout title={content.data.title} description={content.data.description}>
-  <article class="prose lg:prose-xl mx-auto">
-    <h1>{content.data.title}</h1>
-    <p class="text-gray-500">
-      Publicado el {content.data.pubDate.toLocaleDateString('es-ES')} por {content.data.author}
-    </p>
-    <slot />
-  </article>
+  <div class="container mx-auto px-4 py-12 max-w-7xl">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-12">
+      <main class="lg:col-span-3">
+        <article class="bg-white rounded-xl shadow-2xl overflow-hidden">
+          <div class="relative">
+            <div class="min-h-[300px] md:min-h-[400px] lg:min-h-[500px] overflow-hidden">
+              <img 
+                src={content.data.image.url} 
+                alt={content.data.image.alt || 'Imagen del post'} 
+                class="w-full h-full object-cover"
+              />
+            </div>
+            
+            <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900 via-gray-900/70 to-transparent p-6 md:p-8 text-white">
+              <div class="flex flex-wrap items-center gap-3 mb-4">
+                <span class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  Blog
+                </span>
+                <span class="bg-gray-700 text-gray-100 px-3 py-1 rounded-full text-sm font-semibold">
+                  <i class="fa-regular fa-calendar mr-2" aria-hidden="true"></i>
+                  <span class="sr-only">Fecha de publicación:</span>
+                  {content.data.pubDate.toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long', 
+                    day: 'numeric'
+                  })}
+                </span>
+              </div>
+  
+              <h1 class="text-3xl md:text-5xl font-extrabold mb-4 leading-tight drop-shadow-lg">
+                {content.data.title}
+              </h1>
+              
+              <div class="flex flex-wrap items-center justify-between gap-4 mt-6">
+                <div class="flex items-center gap-3">
+                  <Avatar src="/assets/blog/gersom.jpg" alt="Gersom Hernández" class="w-12 h-12 rounded-full object-cover border-2 border-blue-400 shadow-md" />
+                  <div>
+                    <p class="font-semibold text-lg text-gray-200">
+                      {content.data.author}
+                    </p>
+                    <p class="text-sm text-gray-400">
+                      Autor
+                    </p>
+                  </div>
+                </div>
+                
+                {content.data.tags && content.data.tags.length > 0 && (
+                  <div class="flex flex-wrap gap-2 ml-auto">
+                    {content.data.tags.map((tag: string) => (
+                      <span 
+                        key={tag}
+                        class="bg-gray-700 text-gray-100 px-3 py-1 rounded-full text-sm font-medium 
+                               hover:bg-gray-600 transition-colors duration-200"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div class="px-8 py-8 md:px-12 md:py-12 prose prose-lg max-w-none text-gray-800">
+            <slot />
+          </div>
+        </article>
+  
+        <div class="flex justify-between items-center mt-12 gap-4 flex-wrap">
+          <a 
+            href="/" 
+            class="inline-flex items-center bg-gray-100 text-gray-700 px-5 py-2 rounded-lg 
+                   hover:bg-gray-200 transition-colors duration-200 
+                   focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-opacity-50"
+          >
+            <i class="fa-solid fa-arrow-left mr-2" aria-hidden="true"></i>
+            Volver al blog
+          </a>
+          
+          <div class="flex gap-3">
+            <button 
+              class="inline-flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg text-sm 
+                     hover:bg-blue-600 transition-colors duration-200 
+                     focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 
+                     disabled:opacity-50 disabled:pointer-events-none md:px-5 md:py-2.5" 
+              disabled={true} 
+              aria-label="Post anterior"
+            >
+              <i class="fa-solid fa-chevron-left mr-1" aria-hidden="true"></i>
+              Anterior
+            </button>
+            <button 
+              class="inline-flex items-center bg-blue-500 text-white px-4 py-2 rounded-lg text-sm 
+                     hover:bg-blue-600 transition-colors duration-200 
+                     focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 
+                     disabled:opacity-50 disabled:pointer-events-none md:px-5 md:py-2.5" 
+              disabled={true} 
+              aria-label="Post siguiente"
+            >
+              Siguiente
+              <i class="fa-solid fa-chevron-right ml-1" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      </main>
+      
+      <aside class="lg:col-span-1">
+        <Aside 
+          currentPostSlug={content.slug}
+          showSearch={true}
+          showRecentPosts={true}
+          showTags={true}
+          showAuthor={true}
+          showNewsletter={true}
+        />
+      </aside>
+    </div>
+  </div>
 </Layout>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
