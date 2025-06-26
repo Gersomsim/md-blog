@@ -1,0 +1,153 @@
+---
+import { getCollection } from 'astro:content';
+import Avatar from '../molecules/Avatar.astro';
+import Search from '../molecules/Search.astro';
+
+export interface Props {
+  currentPostSlug?: string;
+  showSearch?: boolean;
+  showRecentPosts?: boolean;
+  showTags?: boolean;
+  showAuthor?: boolean;
+  showNewsletter?: boolean;
+}
+
+const { 
+  currentPostSlug,
+  showSearch = true,
+  showRecentPosts = true,
+  showTags = true,
+  showAuthor = true,
+  showNewsletter = true
+} = Astro.props;
+
+// Obtener posts para los widgets
+const allPosts = (await getCollection('blog')).sort(
+  (a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime()
+);
+
+const postsData = allPosts.map(post => ({
+  slug: post.slug,
+  title: post.data.title,
+  description: post.data.description,
+  author: post.data.author,
+  pubDate: post.data.pubDate.toISOString(),
+  tags: post.data.tags || []
+}));
+
+// Posts recientes (excluyendo el actual si estamos en un post)
+const recentPosts = allPosts
+  .filter(post => post.slug !== currentPostSlug)
+  .slice(0, 5);
+
+// Tags únicos
+const allTags = allPosts.flatMap(post => post.data.tags || []);
+const uniqueTags = [...new Set(allTags)];
+const tagCounts = uniqueTags.reduce((acc, tag) => {
+  acc[tag] = allTags.filter(t => t === tag).length;
+  return acc;
+}, {} as Record<string, number>);
+
+// Ordenar tags por frecuencia
+const sortedTags = Object.entries(tagCounts)
+  .sort(([,a], [,b]) => b - a)
+  .slice(0, 10);
+---
+<aside class="space-y-10">
+  {showSearch && (
+    <div class="bg-white rounded-xl shadow-lg p-4">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 border-b-2 border-blue-500 pb-3">
+        <i class="fa-solid fa-search mr-3 text-blue-500" aria-hidden="true"></i>
+        Buscar
+      </h3>
+       <Search 
+        postsData={postsData} 
+        placeholder="Buscar en el blog..."
+        compact={true}
+      />
+    </div>
+  )}
+
+  {showRecentPosts && recentPosts.length > 0 && (
+    <div class="bg-white rounded-xl shadow-lg p-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 border-b-2 border-blue-500 pb-3">
+        <i class="fa-solid fa-clock mr-3 text-blue-500" aria-hidden="true"></i>
+        Artículos Recientes
+      </h3>
+      <div class="space-y-6">
+        {recentPosts.map((post) => (
+          <div key={post.slug} class="recent-post-item">
+            <a href={`/blog/${post.slug}`} class="flex gap-4 group items-start">
+              <div class="flex-1 min-w-0">
+                <h4 class="font-semibold text-base text-gray-800 group-hover:text-blue-600 transition-colors duration-200 line-clamp-2 leading-tight">
+                  {post.data.title}
+                </h4>
+                <p class="text-sm text-gray-500 mt-1">
+                  {post.data.pubDate.toLocaleDateString('es-ES', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric' // Added year for more clarity
+                  })}
+                </p>
+              </div>
+            </a>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {showTags && sortedTags.length > 0 && (
+    <div class="bg-white rounded-xl shadow-lg p-6">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 border-b-2 border-blue-500 pb-3">
+        <i class="fa-solid fa-tags mr-3 text-blue-500" aria-hidden="true"></i>
+        Etiquetas Populares
+      </h3>
+      <div class="flex flex-wrap gap-3">
+        {sortedTags.map(([tag, count]) => (
+          <a 
+            key={tag}
+            href={`/blog?tag=${encodeURIComponent(tag)}`}
+            class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium 
+                   hover:bg-blue-200 hover:text-blue-900 transition-colors duration-200 
+                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+            data-tag={tag}
+          >
+            {tag}
+            <span class="ml-1 text-xs opacity-70">({count})</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+
+
+
+  <div class="bg-white rounded-xl shadow-lg p-6">
+    <h3 class="text-xl font-bold text-gray-800 mb-6 border-b-2 border-blue-500 pb-3">
+      <i class="fa-solid fa-chart-bar mr-3 text-blue-500" aria-hidden="true"></i>
+      Estadísticas Rápidas
+    </h3>
+    <div class="flex flex-col gap-4">
+      <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg shadow-sm">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-newspaper text-3xl text-blue-600" aria-hidden="true"></i>
+          <div>
+            <div class="text-sm text-gray-600">Artículos Publicados</div>
+            <div class="text-3xl font-bold text-blue-800">{allPosts.length}</div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="flex items-center justify-between p-4 bg-cyan-50 rounded-lg shadow-sm">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-tags text-3xl text-cyan-600" aria-hidden="true"></i>
+          <div>
+            <div class="text-sm text-gray-600">Etiquetas Únicas</div>
+            <div class="text-3xl font-bold text-cyan-800">{uniqueTags.length}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</aside>

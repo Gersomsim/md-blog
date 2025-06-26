@@ -1,0 +1,176 @@
+---
+export interface Props {
+  postsData: any[];
+  placeholder?: string;
+  showSort?: boolean;
+  showClear?: boolean;
+  compact?: boolean;
+}
+
+const { 
+  postsData, 
+  placeholder = "Buscar artículos...", 
+} = Astro.props;
+---
+
+<div class="bg-white rounded-xl shadow-md" data-posts={JSON.stringify(postsData)}>
+    <div class="flex flex-1 w-full">
+      <input 
+        type="search" 
+        placeholder={placeholder}
+        class="flex-1 py-3 px-4 border border-gray-300 rounded-l-lg 
+               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent 
+               text-gray-800 placeholder-gray-400 text-base search-input" 
+        aria-label={placeholder}
+      />
+      <button 
+        type="button" 
+        class="bg-blue-600 text-white p-3 rounded-r-lg w-12 h-auto 
+               hover:bg-blue-700 transition-colors duration-200 
+               flex items-center justify-center cursor-pointer 
+               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        aria-label="Buscar"
+      >
+        <i class="fa-solid fa-search text-lg"></i>
+      </button>
+  </div>
+  
+  <div class="flex items-center justify-between mt-4 text-sm text-gray-600 search-info" style="display: none;">
+    <div>
+      <span class="results-count font-semibold">0</span> resultados encontrados
+    </div>
+    <div>
+      Página <span class="current-page font-semibold">1</span> de <span class="total-pages font-semibold">1</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  class BlogSearch {
+    constructor(container) {
+      this.container = container;
+      this.postsData = JSON.parse(container.dataset.posts);
+      this.POSTS_PER_PAGE = 6;
+      this.allPosts = this.postsData;
+      this.filteredPosts = [...this.allPosts];
+      this.currentPage = 1;
+      this.currentSort = 'newest';
+      this.searchTerm = '';
+      
+      this.initElements();
+      this.bindEvents();
+      this.render();
+    }
+    
+    initElements() {
+      this.searchInput = this.container.querySelector('.search-input');
+      this.searchInfo = this.container.querySelector('.search-info');
+      this.resultsCountSpan = this.container.querySelector('.results-count');
+      this.currentPageSpan = this.container.querySelector('.current-page');
+      this.totalPagesSpan = this.container.querySelector('.total-pages');
+    }
+    
+    bindEvents() {
+      this.searchInput.addEventListener('input', this.debounce((e) => {
+        this.searchTerm = e.target.value;
+        this.performSearch();
+      }, 300));
+      
+    }
+    
+    debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+    
+    sortPosts(posts, sortType) {
+      const sorted = [...posts];
+      switch (sortType) {
+        case 'newest':
+          return sorted.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+        case 'oldest':
+          return sorted.sort((a, b) => new Date(a.pubDate) - new Date(b.pubDate));
+        case 'title':
+          return sorted.sort((a, b) => a.title.localeCompare(b.title));
+        default:
+          return sorted;
+      }
+    }
+    
+    filterPosts(posts, searchTerm) {
+      if (!searchTerm.trim()) return posts;
+      
+      const term = searchTerm.toLowerCase();
+      return posts.filter(post => 
+        post.title.toLowerCase().includes(term) ||
+        post.description.toLowerCase().includes(term) ||
+        post.author.toLowerCase().includes(term) ||
+        (post.tags && post.tags.some(tag => tag.toLowerCase().includes(term)))
+      );
+    }
+    
+    performSearch() {
+      this.currentPage = 1;
+      this.filteredPosts = this.filterPosts(this.allPosts, this.searchTerm);
+      this.filteredPosts = this.sortPosts(this.filteredPosts, this.currentSort);
+      this.updateSearchInfo();
+      this.dispatchSearchEvent();
+    }
+    
+    clearSearch() {
+      this.searchInput.value = '';
+      if (this.sortSelect) this.sortSelect.value = 'newest';
+      this.searchTerm = '';
+      this.currentSort = 'newest';
+      this.currentPage = 1;
+      this.filteredPosts = [...this.allPosts];
+      this.updateSearchInfo();
+      this.dispatchSearchEvent();
+    }
+    
+    updateSearchInfo() {
+      const totalPages = Math.ceil(this.filteredPosts.length / this.POSTS_PER_PAGE);
+      
+      if (this.searchTerm || this.currentSort !== 'newest') {
+        this.searchInfo.style.display = 'flex';
+        this.resultsCountSpan.textContent = this.filteredPosts.length;
+        this.currentPageSpan.textContent = this.currentPage;
+        this.totalPagesSpan.textContent = totalPages;
+      } else {
+        this.searchInfo.style.display = 'none';
+      }
+    }
+    
+    dispatchSearchEvent() {
+      const event = new CustomEvent('blogSearch', {
+        detail: {
+          posts: this.filteredPosts,
+          totalPosts: this.filteredPosts.length,
+          currentPage: this.currentPage,
+          searchTerm: this.searchTerm,
+          sortType: this.currentSort
+        }
+      });
+      this.container.dispatchEvent(event);
+    }
+    
+    render() {
+      this.updateSearchInfo();
+      this.dispatchSearchEvent();
+    }
+  }
+  
+  // Inicializar todos los componentes de búsqueda
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.blog-search').forEach(container => {
+      new BlogSearch(container);
+    });
+  });
+</script> 
