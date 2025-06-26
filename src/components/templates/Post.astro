@@ -1,0 +1,14 @@
+---
+import Layout from '../../layouts/Layout.astro';
+const { content } = Astro.props;
+---
+
+<Layout title={content.data.title} description={content.data.description}>
+  <article class="prose lg:prose-xl mx-auto">
+    <h1>{content.data.title}</h1>
+    <p class="text-gray-500">
+      Publicado el {content.data.pubDate.toLocaleDateString('es-ES')} por {content.data.author}
+    </p>
+    <slot />
+  </article>
+</Layout>
